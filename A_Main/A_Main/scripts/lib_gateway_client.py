@@ -13,14 +13,43 @@ def _normalize_base_url(base_url: str) -> str:
     return base_url
 
 
-def fetch_nodes(base_url: str, timeout_s: float = 3.0) -> Dict[str, Any]:
+def _is_retryable_fetch_error(exc: Exception) -> bool:
+    if isinstance(exc, (ConnectionResetError, TimeoutError, socket.timeout)):
+        return True
+    if isinstance(exc, urllib.error.URLError):
+        return True
+    return False
+
+
+def fetch_nodes(
+    base_url: str,
+    timeout_s: float = 3.0,
+    retries: int = 3,
+    retry_backoff_s: float = 0.25,
+) -> Dict[str, Any]:
     """Fetch JSON payload from /api/nodes and return parsed object."""
     base_url = _normalize_base_url(base_url)
     url = f"{base_url}/api/nodes"
     req = urllib.request.Request(url, method="GET")
-    with urllib.request.urlopen(req, timeout=timeout_s) as resp:
-        raw = resp.read().decode("utf-8")
-        payload = json.loads(raw)
+    attempts = retries + 1
+    last_err: Exception | None = None
+
+    for attempt in range(attempts):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+                raw = resp.read().decode("utf-8")
+                payload = json.loads(raw)
+            break
+        except Exception as exc:
+            last_err = exc
+            if (not _is_retryable_fetch_error(exc)) or (attempt >= attempts - 1):
+                raise
+            time.sleep(retry_backoff_s * (attempt + 1))
+    else:
+        if last_err is not None:
+            raise last_err
+        raise RuntimeError("fetch_nodes failed without an exception")
+
     if not isinstance(payload, dict):
         raise ValueError("Gateway response is not a JSON object")
     if "nodes" not in payload or not isinstance(payload["nodes"], list):

@@ -17,11 +17,24 @@ MALFORMED_PAYLOADS = [
 ]
 
 
+def try_fetch_nodes(gateway_url: str, label: str) -> Dict[str, object]:
+    try:
+        return {
+            "ok": True,
+            "payload": fetch_nodes(gateway_url, timeout_s=3.0, retries=6, retry_backoff_s=0.4),
+            "error": "",
+        }
+    except Exception as exc:
+        return {"ok": False, "payload": {"nodes": []}, "error": f"{label}: {exc}"}
+
+
 def run_failure_suite(gateway_url: str, udp_port: int) -> Dict[str, object]:
     host, _ = parse_host_port(gateway_url)
 
-    before = fetch_nodes(gateway_url)
+    before_fetch = try_fetch_nodes(gateway_url, "before_fetch")
+    before = before_fetch["payload"]
     before_nodes = {n.get("node_id") for n in before.get("nodes", [])}
+    attacker_before = {str(node) for node in before_nodes if str(node).startswith("NODE_X")}
 
     injections: List[Dict[str, object]] = []
     for payload in MALFORMED_PAYLOADS:
@@ -37,17 +50,28 @@ def run_failure_suite(gateway_url: str, udp_port: int) -> Dict[str, object]:
 
     time.sleep(1.0)
 
-    after = fetch_nodes(gateway_url)
+    after_fetch = try_fetch_nodes(gateway_url, "after_fetch")
+    after = after_fetch["payload"]
     after_nodes = {n.get("node_id") for n in after.get("nodes", [])}
-
-    attacker_present = any(str(node).startswith("NODE_X") for node in after_nodes)
-    api_alive = True
+    attacker_after = {str(node) for node in after_nodes if str(node).startswith("NODE_X")}
+    attacker_new = sorted(attacker_after - attacker_before)
+    attacker_present = len(attacker_new) > 0
+    api_alive = bool(before_fetch["ok"]) and bool(after_fetch["ok"])
+    fetch_errors: List[str] = []
+    if not before_fetch["ok"]:
+        fetch_errors.append(str(before_fetch["error"]))
+    if not after_fetch["ok"]:
+        fetch_errors.append(str(after_fetch["error"]))
 
     return {
         "before_node_count": len(before_nodes),
         "after_node_count": len(after_nodes),
         "api_alive": api_alive,
+        "fetch_errors": fetch_errors,
         "attacker_present": attacker_present,
+        "attacker_nodes_before": sorted(attacker_before),
+        "attacker_nodes_after": sorted(attacker_after),
+        "attacker_nodes_new": attacker_new,
         "injections": injections,
         "pass": api_alive and (not attacker_present),
     }

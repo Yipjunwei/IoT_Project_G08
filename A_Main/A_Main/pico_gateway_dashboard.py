@@ -28,6 +28,8 @@ UDP_PORT = 5005
 HTTP_PORT = 80
 NODE_EXPIRE_MS = 15000
 SELECT_TIMEOUT_S = 0.1
+PACKET_AUTH_KEY = "mesh_shared_key_v1"   # must match node firmware
+ALLOW_LEGACY_UNAUTH = False   # keep False for security
 
 
 # ---------------------------
@@ -1032,6 +1034,32 @@ def parse_number(s, as_int=False):
         return 0 if as_int else 0.0
 
 
+def fnv1a_hash32(value):
+    h = 2166136261
+    for ch in value:
+        h ^= ord(ch)
+        h = (h * 16777619) & 0xFFFFFFFF
+    return h
+
+
+def to_hex8(v):
+    return "{:08X}".format(v & 0xFFFFFFFF)
+
+
+def compute_packet_hash(node_id, seq, data):
+    payload = "{}|{}|{}|{}".format(node_id, seq, data, PACKET_AUTH_KEY)
+    return to_hex8(fnv1a_hash32(payload))
+
+
+def parse_inner_payload(msg):
+    msg = msg.strip()
+    if msg.startswith("LS|"):
+        return parse_ls_string(msg)
+    if msg.startswith("{"):
+        return parse_json_payload(msg)
+    return None
+
+
 def get_invalid_link_reason(link):
     protocol = str(link.get("protocol", "")).strip().upper()
     if protocol not in ("WIFI", "BLE", "LORA"):
@@ -1149,26 +1177,37 @@ def parse_json_payload(msg):
 
 
 def parse_wrapped_payload(msg):
+    # expected: node_id|seq|data|hash
     p1 = msg.find("|")
     if p1 <= 0:
         return None
+
     p2 = msg.find("|", p1 + 1)
     if p2 <= p1 + 1:
         return None
 
-    node_id = msg[:p1]
-    seq_s = msg[p1 + 1:p2]
-    data = msg[p2 + 1:]
+    p3 = msg.rfind("|")
+    if p3 <= p2 + 1:
+        return None
+
+    node_id = msg[:p1].strip()
+    seq_s = msg[p1 + 1:p2].strip()
+    data = msg[p2 + 1:p3]
+    hash_in = msg[p3 + 1:].strip()
+
     try:
         seq = int(seq_s)
     except Exception:
         return None
 
-    parsed = parse_payload(data)
-    if not parsed:
-        last = data.rfind("|")
-        if last > 0:
-            parsed = parse_payload(data[:last])
+    if not node_id or not hash_in:
+        return None
+
+    expected = compute_packet_hash(node_id, seq, data)
+    if expected.upper() != hash_in.upper():
+        return None
+
+    parsed = parse_inner_payload(data)
     if not parsed:
         return None
 
@@ -1182,15 +1221,14 @@ def parse_payload(msg):
     if not msg:
         return None
 
-    if msg.startswith("LS|"):
-        return parse_ls_string(msg)
-
-    if msg.startswith("{"):
-        return parse_json_payload(msg)
-
+    # secure path: wrapped + hash-verified
     wrapped = parse_wrapped_payload(msg)
     if wrapped:
         return wrapped
+
+    # optional insecure compatibility (keep off in production)
+    if ALLOW_LEGACY_UNAUTH:
+        return parse_inner_payload(msg)
 
     return None
 

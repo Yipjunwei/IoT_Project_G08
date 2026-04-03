@@ -1,0 +1,41 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test and script outputs
+A_Main/A_Main/scripts/output/
+
+# Logs
+*.log
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Arduino / embedded build artifacts
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+*.o
+*.a
+build/
+
+# PlatformIO (if used)
+.pio/

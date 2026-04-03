@@ -57,6 +57,7 @@
 #define LORA_SERIAL         Serial2  // Use Serial2 for LoRa bridge communication
 #define LORA_BAUD           9600
 #define LORA_RX_PIN         33      // M5StickC GPIO33 (G33) Connected to LoRa D1 (TX)
+#define LORA_TX_PIN         -1      // RX-only mode by default; set GPIO if TX is wired
 #define LORA_POLL_MS        100     // Poll LoRa bridge every 100ms
 
 #define BLE_SCAN_INTERVAL_MS 2000          // scan every 2s

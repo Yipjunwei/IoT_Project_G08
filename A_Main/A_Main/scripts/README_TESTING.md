@@ -1,75 +1,112 @@
 # Test Suite (Unit + Integration + System + Failure)
 
-This folder contains the full test workflow you requested.
+  This project includes a full testing workflow for:
 
-## Prerequisites
-- Python 3.9+
-- `pytest` installed (`pip install pytest`)
-- Gateway running and reachable (default: `http://172.20.10.12`)
-- Nodes sending telemetry for meaningful performance output
+  1. Unit testing
+  2. Integration testing
+  3. Failure/robustness testing
+  4. System/performance testing
 
-## Test Types
-1. **Unit testing**
-   - File: `scripts/tests/test_unit_metrics.py`
-   - Validates link metric rules and summary math.
+  ## Folder Structure
 
-2. **Integration testing**
-   - File: `scripts/tests/test_integration_gateway_api.py`
-   - Verifies `/api/nodes` schema and live gateway reachability.
+  - scripts/tests/test_unit_metrics.py
+  - scripts/tests/test_integration_gateway_api.py
+  - scripts/tests/test_failure_robustness.py
+  - scripts/run_failure_tests.py
+  - scripts/run_performance_tests.py
+  - scripts/run_all_tests.sh
+  - scripts/requirements-test.txt
+  - Output directory: scripts/output/
 
-3. **Failure/robustness testing**
-   - Files:
-     - `scripts/tests/test_failure_robustness.py` (pytest check)
-     - `scripts/run_failure_tests.py` (JSON report)
-   - Sends malformed UDP payloads and checks gateway remains responsive.
+  ## Prerequisites
 
-4. **System/performance testing**
-   - File: `scripts/run_performance_tests.py`
-   - Collects timed samples and exports CSV + JSON summaries.
+  - Python 3.9+
+  - Gateway running and reachable (example: http://172.20.10.12)
+  - Nodes powered on and sending telemetry for integration/performance tests
 
-## Quick Start
-Run all stages:
+  ## Install Dependencies (macOS/Homebrew-safe)
 
-```bash
-./scripts/run_all_tests.sh http://172.20.10.12 120
-```
+  Use a virtual environment to avoid externally-managed-environment errors:
 
-Arguments:
-- Arg1: gateway URL (default `http://172.20.10.12`)
-- Arg2: per-scenario duration in seconds (default `120`)
+  python3 -m venv .venv
+  source .venv/bin/activate
+  python -m pip install -U pip
+  python -m pip install -r scripts/requirements-test.txt
 
-## Manual Commands
-### Unit
-```bash
-pytest -q scripts/tests/test_unit_metrics.py
-```
+  ## Run All Test Categories
 
-### Integration
-```bash
-pytest -q scripts/tests/test_integration_gateway_api.py --gateway-url http://172.20.10.12
-```
+  ./scripts/run_all_tests.sh http://172.20.10.12 120
 
-### Failure
-```bash
-pytest -q scripts/tests/test_failure_robustness.py --gateway-url http://172.20.10.12
-python3 scripts/run_failure_tests.py --gateway-url http://172.20.10.12
-```
+  Arguments:
 
-### Performance
-```bash
-python3 scripts/run_performance_tests.py \
-  --gateway-url http://172.20.10.12 \
-  --duration 120 \
-  --interval 2 \
-  --scenarios baseline latency_objective energy_objective reliability_objective
-```
+  - arg1: gateway URL (default: http://172.20.10.12)
+  - arg2: duration in seconds per performance scenario (default: 120)
 
-## Outputs
-Saved to `scripts/output/`:
-- `failure_report_<timestamp>.json`
-- `performance_report_<timestamp>.json`
-- `performance_samples_<timestamp>.csv`
+  ## Run Tests Individually
 
-## Notes
-- Performance scenarios are **operator-driven labels**. Apply the physical/network condition before pressing Enter.
-- If gateway is offline, integration/failure tests are skipped or fail with clear messages.
+  ### 1) Unit Testing
+
+  Validates metric logic and link validation rules.
+
+  python -m pytest -q scripts/tests/test_unit_metrics.py
+
+  ### 2) Integration Testing
+
+  Validates gateway API schema and live reachability.
+
+  python -m pytest -q scripts/tests/test_integration_gateway_api.py --gateway-u
+  rl http://172.20.10.12
+
+  ### 3) Failure/Robustness Testing
+
+  Sends malformed UDP payloads and verifies gateway stays responsive.
+
+  python -m pytest -q scripts/tests/test_failure_robustness.py --gateway-url
+  http://172.20.10.12
+  python scripts/run_failure_tests.py --gateway-url http://172.20.10.12
+
+  ### 4) System/Performance Testing
+
+  Collects timed samples and exports CSV + JSON reports.
+
+  python scripts/run_performance_tests.py --gateway-url http://172.20.10.12 --d
+  uration 120 --interval 2
+
+  Default scenarios:
+
+  - baseline
+  - latency_objective
+  - energy_objective
+  - reliability_objective
+
+  You can override scenarios:
+
+  python scripts/run_performance_tests.py \
+    --gateway-url http://172.20.10.12 \
+    --duration 120 \
+    --interval 2 \
+    --scenarios baseline interference node_failure
+
+  ## Output Files
+
+  All generated reports are saved in:
+
+  scripts/output/
+
+  Files:
+
+  - failure_report_<timestamp>.json
+  - performance_report_<timestamp>.json
+  - performance_samples_<timestamp>.csv
+
+  ## Notes
+
+  - Performance scenarios are operator-driven labels.
+  - Before each scenario starts, apply the intended physical/network condition,
+    then press Enter.
+  - If gateway is offline, integration/failure tests will skip or fail with
+    clear messages.
+
+  ## Deactivate Environment
+
+  deactivate
