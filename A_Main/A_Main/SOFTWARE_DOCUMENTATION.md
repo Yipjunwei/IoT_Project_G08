@@ -128,40 +128,6 @@ Suggested wording:
 
 - "Automated tests cover metric logic, API behavior, malformed payload handling, and scenario-based performance sampling."
 
-## 7. What You Can Claim in Report
-
-Safe claims:
-
-- end-to-end multi-protocol telemetry pipeline (Wi-Fi, BLE, LoRa bridge)
-- live topology visualization with protocol filtering
-- Dijkstra-based objective routing analysis
-- packet integrity validation and deduplication
-- malformed payload rejection and stale node expiry
-- scripted robustness and performance testing workflow
-
-## 8. Claims to Qualify or Avoid
-
-Claims to avoid (unless you add new implementation evidence):
-
-- multiple routing algorithms evaluated end-to-end
-- full jitter/throughput/PDR objective evaluation
-- production-grade security
-- gateway-only route computation
-
-Better alternatives:
-
-- "Dijkstra-based objective routing is implemented and validated in the dashboard workflow."
-- "The prototype provides integrity-focused security controls for controlled LAN testing."
-
-## 9. Suggested Mapping to Report Sections
-
-- Introduction and problem statement: Sections 1 and 3
-- Design and architecture: Section 2
-- Security design: Section 4
-- Implementation: Sections 2, 3, 5
-- Testing and validation: Section 6
-- Contributions and scope: Sections 7 and 8
-- Limitations/future work: Sections 5 and 8
 
 ## 10. Executive Summary Paragraph
 
