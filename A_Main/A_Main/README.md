@@ -1,126 +1,130 @@
-# BLE Working - Split Arduino Project
+# Multi-Protocol IoT Mesh Analytics
 
-This project has been split into multiple `.ino` files for better organization and maintainability.
+This repository contains a working prototype for real-time IoT mesh telemetry and route analysis across Wi-Fi, BLE, and LoRa.
 
-## File Structure
+The system has three parts:
 
-The files are prefixed with letters (A-I) to ensure proper compilation order:
+- ESP32 edge node firmware (`.ino` modules)
+- Pico W gateway backend (`pico_gateway_dashboard.py`)
+- Browser dashboard served by the gateway
 
-### Core Files (Compiled First)
-1. **A_Main.ino** - Main sketch with setup() and loop()
-   - Contains all configuration defines
-   - Struct definitions (LinkMetric, NeighbourEntry)
-   - Main program flow
-   - Forward declarations for all globals
+## Features
 
-2. **B_DataStructures.ino** - Global variable definitions
-   - WiFiUDP, BLE pointers
-   - Neighbour array
-   - State variables
+- Multi-protocol neighbour discovery and link-state telemetry
+- Live topology dashboard with protocol filters
+- Objective-based routing analysis using Dijkstra:
+  - latency
+  - energy
+  - reliability
+- Routing table and source-destination route view
+- Telemetry integrity and robustness controls:
+  - shared-key packet hash verification
+  - sequence-based deduplication
+  - malformed payload rejection
+  - stale node expiry
 
-### Functional Modules (Compiled in Order)
-3. **C_EnergyModel.ino** - Energy measurement and estimation
-   - Energy tracking variables
-   - RSSI-based energy estimation functions
-   - Real-time energy measurement
+## Repository Structure
 
-4. **D_LinkMetrics.ino** - Link quality estimation
-   - BLE latency and reliability estimation
-   - WiFi latency and reliability estimation
-   - RSSI-based metric calculation
+### Node Firmware (Arduino, ESP32)
 
-5. **E_HelperUtils.ino** - Utility functions
-   - Node name validation
-   - Node number extraction
-   - Scan slot timing
-   - Link-state packet building
+- `A_Main.ino`: main setup/loop and scheduling
+- `B_DataStructures.ino`: shared globals and data structures
+- `C_EnergyModel.ino`: energy estimation/tracking
+- `D_LinkMetrics.ino`: link metric estimation
+- `E_HelperUtils.ino`: auth/hash/parse/dedup helpers
+- `F_NeighbourManagement.ino`: neighbour table management
+- `G_BLE_Functions.ino`: BLE advertising/scanning
+- `H_WiFi_Functions.ino`: Wi-Fi and UDP logic
+- `I_Display.ino`: on-device LCD pages
+- `J_LoRa_Functions.ino`: LoRa serial-bridge logic
 
-6. **F_NeighbourManagement.ino** - Neighbour discovery and management
-   - Neighbour table operations
-   - BLE/WiFi neighbour upsert functions
-   - Best neighbour selection algorithms
-   - Protocol selection logic
+### Gateway and Dashboard
 
-7. **G_BLE_Functions.ino** - BLE-specific functionality
-   - BLE advertising setup
-   - BLE scanning callbacks
-   - Scan round management
+- `pico_gateway_dashboard.py`: UDP ingest, HTTP API, and embedded dashboard
 
-8. **H_WiFi_Functions.ino** - WiFi-specific functionality
-   - WiFi setup and connection
-   - UDP message handling
-   - Hello packet broadcasting
-   - Gateway communication
+### Test and Evaluation Scripts
 
-9. **I_Display.ino** - Display and debugging
-   - M5StickC display updates
-   - Neighbour table printing
-   - Status visualization
-
-## Why the Letter Prefixes?
-
-Arduino IDE compiles `.ino` files **in alphabetical order**. The letter prefixes ensure:
-- `A_Main.ino` compiles first → defines structs and macros
-- `B_DataStructures.ino` second → defines global variables
-- Other files compile after → can use structs and variables
-
-Without this ordering, you get "not declared" errors because files would reference things defined in later files.
+- `scripts/run_all_tests.sh`
+- `scripts/run_performance_tests.py`
+- `scripts/run_failure_tests.py`
+- `scripts/tests/*`
 
 ## How It Works
 
-Arduino IDE automatically combines all `.ino` files in the same folder during compilation. The files are concatenated in alphabetical order, but because of how C++ compilation works:
-
-- Function declarations can appear after their usage
-- All files share the same global scope
-- Variables and functions defined in one file are accessible in others
-- **Structs and #defines must be declared before use**
-
-## Usage Instructions
-
-1. Create a new folder named `BLE_Working` (or any name you want)
-2. Place ALL `.ino` files in this folder
-3. Open `A_Main.ino` in Arduino IDE
-4. The IDE will show all files as tabs
-5. Compile and upload as normal
+1. Nodes discover neighbours over BLE/Wi-Fi and ingest LoRa data through serial bridge.
+2. Nodes build link-state payloads and send authenticated packets to the gateway (UDP port `5005`).
+3. Gateway verifies packets, deduplicates by sequence, filters invalid links, and maintains active topology state.
+4. Dashboard fetches `/api/nodes` and renders live topology and route analysis.
 
 ## Configuration
 
-To configure for different nodes, edit these defines in `A_Main.ino`:
+Edit node settings in `A_Main.ino`:
 
 ```cpp
-#define NODE_ID             "NODE_2"
-#define NODE_NUM            2
-#define BLE_DEVICE_NAME     "NODE_2"
+#define NODE_ID             "NODE_1"
+#define NODE_NUM            1
+#define BLE_DEVICE_NAME     "NODE_1"
+
+#define PACKET_AUTH_KEY     "mesh_shared_key_v1"
 
 #define WIFI_SSID           "YourSSID"
 #define WIFI_PASSWORD       "YourPassword"
+
+#define GATEWAY_IP          "x.x.x.x"
+#define GATEWAY_PORT        5005
 ```
 
-## Dependencies
+Edit gateway settings in `pico_gateway_dashboard.py`:
 
-- M5StickCPlus library
-- ESP32 BLE libraries (built-in)
-- WiFi library (built-in)
+- `WIFI_SSID`
+- `WIFI_PASSWORD`
+- `PACKET_AUTH_KEY` (must match nodes)
+- `UDP_PORT` (default `5005`)
+- `HTTP_PORT` (default `80`)
 
-## Benefits of This Split
+## Build and Run
 
-✅ **Better Organization** - Each file has a clear, single responsibility
-✅ **Easier Maintenance** - Find and fix code more easily
-✅ **Better Readability** - Smaller, focused files
-✅ **Reusability** - Easy to copy specific modules to other projects
-✅ **Team Collaboration** - Different people can work on different modules
+### Node Firmware
 
-## Troubleshooting
+1. Keep all `.ino` files in one Arduino sketch folder.
+2. Open `A_Main.ino` in Arduino IDE.
+3. Install required board/libraries.
+4. Flash each node with unique `NODE_ID` / `NODE_NUM`.
 
-**"Not declared" errors during compilation?**
-- Make sure all files are in the same directory
-- Verify the letter prefixes are correct (A through I)
-- Check that `A_Main.ino` is the main file being opened
+### Gateway
 
-**Need to rename files?**
-- Keep the alphabetical order: A, B, C, D, E, F, G, H, I
-- Or remove the prefixes and put everything back in one file
+1. Flash/upload `pico_gateway_dashboard.py` to Pico W.
+2. Reboot the gateway.
+3. Open `http://<gateway-ip>/` in a browser.
 
-## Note
+## Testing
 
-All files must be in the same directory for Arduino IDE to recognize them as part of the same sketch. The main file (A_Main.ino) must be opened for the sketch to load properly.
+Run full test flow:
+
+```bash
+./scripts/run_all_tests.sh http://<gateway-ip> 120
+```
+
+Run specific suites:
+
+```bash
+pytest -q scripts/tests/test_unit_metrics.py
+pytest -q scripts/tests/test_integration_gateway_api.py --gateway-url http://<gateway-ip>
+pytest -q scripts/tests/test_failure_robustness.py --gateway-url http://<gateway-ip>
+python3 scripts/run_performance_tests.py --gateway-url http://<gateway-ip> --duration 60
+```
+
+## Security Scope
+
+Implemented:
+
+- packet integrity/authentication with shared-key hash
+- sequence deduplication
+- malformed payload rejection
+
+Not implemented:
+
+- TLS/HTTPS transport encryption
+- user login/token auth for dashboard/API
+
+This makes the current build suitable for controlled LAN/testbed use. Production deployment needs stronger security hardening.

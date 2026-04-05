@@ -1,0 +1,5 @@
+Scenario,Samples,Failed Samples,Avg Latency (ms),P95 Latency (ms),Avg Energy Metric,Avg Reliability
+baseline,47,0,72.46,78.25,2.1314,0.6837
+latency_objective,48,0,74.23,80.17,2.1867,0.6756
+energy_objective,46,0,75.17,82.03,2.2154,0.6619
+reliability_objective,42,1,73.32,85.43,2.2283,0.6525
